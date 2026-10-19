@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BioQuest – Path of Medicine</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<style>
+:root{--bio:#10B981;--blue:#3B82F6}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Be Vietnam Pro',sans-serif;color:#f1f5f9;min-height:100vh;background:#064e3b}
+body::before{content:'';position:fixed;inset:0;background:linear-gradient(160deg,rgba(6,78,59,.45),rgba(15,23,42,.65)),url('bg.jpg') center/cover no-repeat;z-index:-2}
+.glass{background:rgba(6,78,59,.55);backdrop-filter:blur(14px);border:1px solid rgba(255,255,255,.2);border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,.35)}
+header{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:10px 16px;flex-wrap:wrap;gap:8px;background:rgba(6,30,20,.92);backdrop-filter:blur(12px);border-bottom:1px solid rgba(16,185,129,.4)}
+.logo{font-family:Montserrat,sans-serif;font-weight:800;font-size:1.3rem;background:linear-gradient(90deg,#34d399,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:transparent;border:1px solid transparent;color:#cbd5e1;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:.85rem}
+nav button:hover,nav button.active{background:rgba(16,185,129,.25);border-color:var(--bio);color:#fff}
+.user-area{display:flex;align-items:center;gap:8px}
+.avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;border:2px solid #34d399}
+.btn{font-family:Montserrat,sans-serif;padding:9px 18px;border-radius:10px;border:none;cursor:pointer;font-weight:700;transition:.2s;font-size:.9rem}
+.btn-primary{background:linear-gradient(90deg,#10B981,#059669);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 5px 15px rgba(16,185,129,.4)}
+.btn-secondary{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2)}
+main{padding:16px;max-width:1100px;margin:0 auto}
+.screen{display:none}.screen.active{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.char-panel{background:rgba(0,0,0,.55);border:3px solid #10B981;border-radius:14px;padding:16px 12px;text-align:center}
+.char-sprite{width:120px;height:120px;margin:0 auto 10px;background:#0f172a;border:3px solid #34d399;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:5rem;position:relative}
+.char-sprite::after{content:'';position:absolute;inset:4px;border:2px dashed rgba(52,211,153,.4);border-radius:8px;pointer-events:none}
+.char-name{font-family:Montserrat;font-weight:800;font-size:1.1rem;color:#34d399;margin-bottom:6px}
+.char-bar{height:9px;background:#1e293b;border-radius:5px;overflow:hidden;margin:8px 0;border:1px solid #334155}
+.char-fill{height:100%;background:linear-gradient(90deg,#10B981,#3B82F6);transition:width .4s}
+.char-desc{font-size:.8rem;color:#94a3b8;line-height:1.4}
+
+.game-layout{display:grid;grid-template-columns:190px 1fr;gap:14px}
+@media(max-width:780px){.game-layout{grid-template-columns:1fr}}
+.timer{font-family:Montserrat;font-size:1.4rem;font-weight:800;color:#fbbf24;background:rgba(0,0,0,.5);padding:7px 14px;border-radius:9px;border:2px solid #fbbf24}
+.timer.danger{color:#ef4444;border-color:#ef4444}
+.question-card{background:rgba(15,23,42,.82);border:2px solid #10B981;border-radius:13px;padding:18px}
+.options{display:grid;gap:8px;margin-top:11px}
+.option-btn{background:rgba(0,0,0,.35);border:2px solid #334155;color:#e2e8f0;padding:10px 13px;border-radius:8px;text-align:left;cursor:pointer;font-size:.93rem}
+.option-btn:hover:not(:disabled){background:rgba(16,185,129,.25);border-color:#10B981}
+.option-btn.correct{background:rgba(16,185,129,.4);border-color:#10B981}
+.option-btn.wrong{background:rgba(239,68,68,.35);border-color:#ef4444}
+
+.exam-timer{font-family:Montserrat;font-size:1.5rem;font-weight:800;color:#fbbf24;border:2px solid #fbbf24;padding:7px 16px;border-radius:9px;display:inline-block;margin-bottom:12px}
+.exam-q{background:rgba(0,0,0,.3);border:1px solid rgba(16,185,129,.25);border-radius:9px;padding:13px;margin-bottom:10px}
+.exam-q .num{font-weight:700;color:#34d399;margin-bottom:5px}
+
+.lab-tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:11px}
+.lab-tabs button{padding:7px 12px;border-radius:8px;background:rgba(255,255,255,.08);border:none;color:#cbd5e1;cursor:pointer;font-size:.85rem}
+.lab-tabs button.active{background:rgba(16,185,129,.25);color:#fff}
+.lab-panel{display:none}.lab-panel.active{display:block}
+.punnett{display:grid;grid-template-columns:48px 1fr 1fr;gap:3px;max-width:260px;margin:9px 0}
+.punnett div{background:rgba(255,255,255,.08);padding:8px;text-align:center;border-radius:5px;font-size:.9rem}
+.punnett .h{background:rgba(16,185,129,.3);font-weight:600}
+.lab-visual{display:flex;gap:16px;align-items:center;margin:14px 0;flex-wrap:wrap}
+.lab-visual .item{text-align:center;padding:10px 14px;background:rgba(0,0,0,.3);border-radius:12px;border:1px solid rgba(255,255,255,.15)}
+.lab-visual .emoji{font-size:2.8rem;margin-bottom:4px}
+
+#chatbot{position:fixed;bottom:16px;right:16px;z-index:150;width:320px}
+#chatbot.collapsed .chat-body,#chatbot.collapsed .chat-input{display:none}
+.chat-header{background:linear-gradient(90deg,#059669,#0d9488);padding:9px 12px;border-radius:11px 11px 0 0;display:flex;align-items:center;gap:8px;cursor:pointer}
+.chat-body{background:rgba(15,23,42,.95);padding:9px;max-height:320px;overflow-y:auto}
+.chat-msg{margin-bottom:6px;padding:6px 9px;border-radius:8px;font-size:.83rem;max-width:90%;line-height:1.4}
+.chat-msg.bot{background:rgba(16,185,129,.2)}
+.chat-msg.user{background:rgba(59,130,246,.25);margin-left:auto;text-align:right}
+.chat-input{display:flex;gap:5px;padding:7px;background:rgba(15,23,42,.95);border-radius:0 0 11px 11px}
+.chat-input input{flex:1;padding:6px 10px;border-radius:14px;border:1px solid #334155;background:#1e293b;color:#fff}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🧬 BioQuest</div>
+  <nav id="nav">
+    <button data-screen="home" class="active">Trang chủ</button>
+    <button data-screen="game">Path of Medicine</button>
+    <button data-screen="lab">Lab Di truyền</button>
+    <button data-screen="exam">Đề tự tạo</button>
+    <button data-screen="wiki">Bio-Wiki</button>
+    <button data-screen="flash">Flashcard</button>
+  </nav>
+  <div class="user-area" id="userArea">
+    <button class="btn btn-secondary" onclick="loginGoogle()">Đăng nhập Gmail</button>
+  </div>
+</header>
+
+<main>
+  <section id="home" class="screen active">
+    <div class="glass" style="padding:36px;text-align:center">
+      <h1 style="font-family:Montserrat;font-size:2.3rem;background:linear-gradient(90deg,#34d399,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:10px">PATH OF MEDICINE</h1>
+      <p style="color:#a7f3d0;max-width:520px;margin:0 auto 22px">Hành trình 200 Level trở thành Bác sĩ Huyền thoại theo chương trình GDPT 2018.</p>
+      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-bottom:22px">
+        <div class="glass" style="padding:12px 20px;min-width:100px"><div style="font-size:1.5rem;font-weight:800;color:#34d399" id="sLevel">1</div><div style="font-size:.78rem;color:#94a3b8">Level</div></div>
+        <div class="glass" style="padding:12px 20px;min-width:100px"><div style="font-size:1.5rem;font-weight:800;color:#34d399" id="sStage">1</div><div style="font-size:.78rem;color:#94a3b8">Cấp bậc</div></div>
+        <div class="glass" style="padding:12px 20px;min-width:100px"><div style="font-size:1.5rem;font-weight:800;color:#34d399" id="sCorrect">0</div><div style="font-size:.78rem;color:#94a3b8">Câu đúng</div></div>
+      </div>
+      <button class="btn btn-primary" style="padding:13px 30px;font-size:1rem" onclick="startGame()">Bắt đầu hành trình 🚀</button>
+    </div>
+  </section>
+
+  <section id="game" class="screen">
+    <div class="game-layout">
+      <div class="char-panel glass">
+        <div class="char-sprite" id="charSprite">🧑‍🎓</div>
+        <div class="char-name" id="charName">HỌC SINH</div>
+        <div class="char-bar"><div class="char-fill" id="charFill" style="width:8%"></div></div>
+        <div class="char-desc" id="charDesc">Bạn đang là học sinh phổ thông. Trả lời đúng để lên cấp!</div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <div style="background:linear-gradient(90deg,#10B981,#059669);padding:6px 13px;border-radius:18px;font-weight:700;font-size:.9rem" id="stageBadge">Cấp 1 • Học sinh</div>
+          <div class="timer" id="timer">15</div>
+          <div style="font-size:.9rem">Level <span id="curLevel">1</span>/200</div>
+        </div>
+        <div style="height:7px;background:rgba(0,0,0,.4);border-radius:4px;margin-bottom:12px"><div id="progFill" style="height:100%;width:.5%;background:linear-gradient(90deg,#10B981,#3B82F6);border-radius:4px"></div></div>
+        <div class="question-card">
+          <h2 id="qText" style="font-family:Montserrat;font-size:1.05rem;margin-bottom:10px">Câu hỏi...</h2>
+          <div class="options" id="options"></div>
+          <div id="feedback" style="margin-top:10px;display:none;padding:9px;border-radius:8px;font-size:.9rem"></div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:9px">
+          <button class="btn btn-secondary" onclick="showScreen('home')">Về trang chủ</button>
+          <button class="btn btn-primary" id="nextBtn" style="display:none" onclick="nextQ()">Câu tiếp →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="lab" class="screen">
+    <h2 style="font-family:Montserrat;margin-bottom:11px">🧪 Lab Di truyền</h2>
+    <div class="lab-tabs">
+      <button class="active" data-lab="mendel">Lai 1 tính trạng</button>
+      <button data-lab="incomplete">Trội không hoàn toàn</button>
+      <button data-lab="blood">Đồng trội (ABO)</button>
+      <button data-lab="morgan">Liên kết & Hoán vị gen</button>
+      <button data-lab="sex">Gen trên NST giới tính</button>
+    </div>
+    <div id="lab-mendel" class="lab-panel active glass" style="padding:16px">
+      <h3>Lai một tính trạng (Mendel)</h3>
+      <div class="lab-visual">
+        <div class="item"><div class="emoji">🌸</div><div style="font-size:.85rem">Hoa đỏ (A-)</div></div>
+        <div style="font-size:1.4rem">×</div>
+        <div class="item"><div class="emoji">⚪</div><div style="font-size:.85rem">Hoa trắng (aa)</div></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin:10px 0">
+        <select id="p1"><option value="AA">AA</option><option value="Aa" selected>Aa</option><option value="aa">aa</option></select>
+        <select id="p2"><option value="AA">AA</option><option value="Aa" selected>Aa</option><option value="aa">aa</option></select>
+        <button class="btn btn-primary" onclick="runMendel()">Tạo bảng Punnett</button>
+      </div>
+      <div id="resMendel"></div>
+    </div>
+    <div id="lab-incomplete" class="lab-panel glass" style="padding:16px">
+      <h3>Trội không hoàn toàn</h3>
+      <div class="lab-visual">
+        <div class="item"><div class="emoji">🔴</div><div style="font-size:.85rem">RR (đỏ)</div></div>
+        <div style="font-size:1.4rem">×</div>
+        <div class="item"><div class="emoji">⚪</div><div style="font-size:.85rem">rr (trắng)</div></div>
+        <div style="font-size:1.4rem">→</div>
+        <div class="item"><div class="emoji">🩷</div><div style="font-size:.85rem">Rr (hồng)</div></div>
+      </div>
+      <button class="btn btn-primary" onclick="document.getElementById('resInc').innerHTML='<b>F2:</b> 1 Đỏ : 2 Hồng : 1 Trắng (tỷ lệ 1:2:1)'">Xem kết quả F2</button>
+      <div id="resInc" style="margin-top:10px"></div>
+    </div>
+    <div id="lab-blood" class="lab-panel glass" style="padding:16px">
+      <h3>Đồng trội – Hệ nhóm máu ABO</h3>
+      <div class="lab-visual"><div class="item"><div class="emoji">🩸</div><div style="font-size:.85rem">Nhóm máu ABO</div></div></div>
+      <button class="btn btn-primary" onclick="document.getElementById('resBlood').innerHTML='Bố I<sup>A</sup>i × Mẹ I<sup>B</sup>i → con có thể nhóm A, B, AB hoặc O'">Xem ví dụ</button>
+      <div id="resBlood" style="margin-top:10px"></div>
+    </div>
+    <div id="lab-morgan" class="lab-panel glass" style="padding:16px">
+      <h3>Liên kết gen & Hoán vị gen</h3>
+      <div class="lab-visual"><div class="item"><div class="emoji">🪰</div><div style="font-size:.85rem">Ruồi giấm</div></div></div>
+      <label>Tần số hoán vị (%): <input type="number" id="hv" value="17" style="width:65px;padding:4px;background:#000;border:1px solid #555;color:#fff;border-radius:5px"></label>
+      <button class="btn btn-primary" style="margin-left:7px" onclick="runMorgan()">Mô phỏng</button>
+      <div id="resMorgan" style="margin-top:10px"></div>
+    </div>
+    <div id="lab-sex" class="lab-panel glass" style="padding:16px">
+      <h3>Gen trên NST giới tính (mù màu)</h3>
+      <div class="lab-visual"><div class="item"><div class="emoji">👁️</div><div style="font-size:.85rem">Mù màu đỏ-lục</div></div></div>
+      <button class="btn btn-primary" onclick="document.getElementById('resSex').innerHTML='Bố X<sup>n</sup>Y × Mẹ X<sup>N</sup>X<sup>n</sup> → 50% con trai bị bệnh, 50% con gái mang gen'">Xem ví dụ</button>
+      <div id="resSex" style="margin-top:10px"></div>
+    </div>
+  </section>
+
+  <section id="exam" class="screen">
+    <h2 style="font-family:Montserrat;margin-bottom:11px">📝 Đề tự tạo</h2>
+    <div class="glass" style="padding:18px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div>
+          <label style="font-size:.85rem;color:#94a3b8">Chọn lớp:</label><br>
+          <select id="examGrade" style="padding:7px 10px;border-radius:8px;background:#0f172a;border:1px solid #334155;color:#fff">
+            <option value="all">Ngẫu nhiên (10-12)</option>
+            <option value="10">Lớp 10</option>
+            <option value="11">Lớp 11</option>
+            <option value="12">Lớp 12</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.85rem;color:#94a3b8">Chủ đề:</label><br>
+          <select id="examTopic" style="padding:7px 10px;border-radius:8px;background:#0f172a;border:1px solid #334155;color:#fff">
+            <option value="all">Ngẫu nhiên</option>
+            <option value="cell">Tế bào</option>
+            <option value="genetics">Di truyền</option>
+            <option value="physiology">Sinh lý</option>
+            <option value="ecology">Sinh thái</option>
+          </select>
+        </div>
+      </div>
+      <p style="color:#94a3b8;margin-bottom:12px;font-size:.92rem">Cấu trúc: <b>18 câu trắc nghiệm</b> + <b>4 câu đúng/sai</b> + <b>6 câu trả lời ngắn</b>. Thời gian: <b>50 phút</b>.</p>
+      <button class="btn btn-primary" id="startExamBtn" onclick="startExam()">Tạo đề & Bắt đầu</button>
+      <div id="examArea" style="display:none;margin-top:14px">
+        <div class="exam-timer" id="examTimer">50:00</div>
+        <div id="examQs"></div>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="submitExam()">Nộp bài</button>
+      </div>
+      <div id="examResult" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <section id="wiki" class="screen">
+    <h2 style="font-family:Montserrat;margin-bottom:11px">📖 Bio-Wiki</h2>
+    <div id="wikiGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px"></div>
+  </section>
+  <section id="flash" class="screen">
+    <h2 style="font-family:Montserrat;margin-bottom:11px">🃏 Flashcard</h2>
+    <div id="flashGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:11px"></div>
+  </section>
+</main>
+
+<div id="chatbot" class="collapsed">
+  <div class="chat-header" onclick="this.parentElement.classList.toggle('collapsed')">
+    <div style="width:32px;height:32px;background:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem">🐦</div>
+    <div><b>Dr. Sparrow</b><div style="font-size:.7rem;opacity:.85">Trợ lý Sinh học (Grok)</div></div>
+  </div>
+  <div class="chat-body" id="chatBody">
+    <div class="chat-msg bot">Xin chào! Mình là Dr. Sparrow, được hỗ trợ bởi Grok. Bạn hỏi gì về Sinh học cũng được.</div>
+  </div>
+  <div class="chat-input">
+    <input id="chatInput" placeholder="Hỏi gì đó..." onkeydown="if(event.key==='Enter')sendChat()">
+    <button onclick="sendChat()" style="background:var(--bio);border:none;color:#fff;width:32px;border-radius:50%">➤</button>
+  </div>
+</div>
+
+<script>
+/* ===== FIREBASE ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyBDho2BuASw27cgbpiiVttaponkc2qB81c",
+  authDomain: "bioquest-5ea26.firebaseapp.com",
+  projectId: "bioquest-5ea26",
+  storageBucket: "bioquest-5ea26.firebasestorage.app",
+  messagingSenderId: "1040439022331",
+  appId: "1:1040439022331:web:4d8bbe801511cc992d965e"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+let currentUser = null;
+auth.onAuthStateChanged(user => { currentUser = user; updateUserUI(); });
+function loginGoogle() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider).catch(err => alert("Lỗi đăng nhập: " + err.message));
+}
+function logout() { auth.signOut(); }
+function updateUserUI() {
+  const area = document.getElementById("userArea");
+  if (currentUser) {
+    area.innerHTML = `<img src="${currentUser.photoURL||''}" class="avatar"><span style="font-size:.84rem">${currentUser.displayName||currentUser.email}</span>
+      <button class="btn btn-secondary" style="padding:5px 10px;font-size:.78rem" onclick="logout()">Thoát</button>`;
+  } else {
+    area.innerHTML = `<button class="btn btn-secondary" onclick="loginGoogle()">Đăng nhập Gmail</button>`;
+  }
+}
+
+/* ===== DATA ===== */
+const CHARS = [
+  {e:"🧑‍🎓",n:"HỌC SINH",d:"Bạn đang là học sinh phổ thông. Trả lời đúng để lên cấp!"},
+  {e:"👨‍⚕️",n:"SINH VIÊN Y",d:"Bạn đã vào trường Y khoa."},
+  {e:"🩺",n:"BÁC SĨ TẬP SỰ",d:"Bạn đang thực tập tại bệnh viện."},
+  {e:"🧑‍⚕️",n:"BÁC SĨ LÀNH NGHỀ",d:"Bạn đã thành thạo chuyên môn."},
+  {e:"🏆",n:"BÁC SĨ HUYỀN THOẠI",d:"Cấp cao nhất! Chúc mừng!"}
+];
+const STAGES = [
+  {l:30,t:15,n:"Học sinh"},{l:45,t:20,n:"Sinh viên Y"},
+  {l:55,t:30,n:"Bác sĩ tập sự"},{l:50,t:35,n:"Bác sĩ lành nghề"},{l:20,t:40,n:"Bác sĩ huyền thoại"}
+];
+const QS = [
+  {q:"Đơn vị cấu trúc và chức năng cơ bản của cơ thể sống là gì?",o:["Tế bào","Mô","Cơ quan","Hệ cơ quan"],a:0,e:"Tế bào là đơn vị cấu trúc và chức năng cơ bản."},
+  {q:"DNA được cấu tạo từ các đơn phân nào?",o:["Nucleotide","Amino acid","Glucose","Axit béo"],a:0,e:"Nucleotide gồm đường, phosphate và base nitơ."},
+  {q:"Quá trình tạo ATP khi không có oxygen gọi là gì?",o:["Đường phân","Chu trình Krebs","Chuỗi truyền electron","Quang hợp"],a:0,e:"Đường phân xảy ra ở tế bào chất, không cần oxygen."},
+  {q:"Cơ quan quang hợp chính của thực vật là?",o:["Lá","Rễ","Thân","Hoa"],a:0,e:"Lá chứa nhiều lục lạp."},
+  {q:"Gene là gì?",o:["Một đoạn DNA mã hóa sản phẩm chức năng","Một nhiễm sắc thể","Một protein","Một tế bào"],a:0,e:"Định nghĩa hiện đại của gene."},
+  {q:"Máu thuộc loại mô nào?",o:["Mô liên kết","Mô biểu bì","Mô cơ","Mô thần kinh"],a:0,e:"Máu là mô liên kết dạng lỏng."},
+  {q:"Bản chất hóa học của hầu hết enzyme là?",o:["Protein","Lipid","Carbohydrate","DNA"],a:0,e:"Hầu hết enzyme là protein."},
+  {q:"Kỳ nào nhiễm sắc thể xếp hàng trên mặt phẳng xích đạo?",o:["Kỳ giữa","Kỳ đầu","Kỳ sau","Kỳ cuối"],a:0,e:"Kỳ giữa (metaphase)."},
+  {q:"Khí được thải ra trong quá trình quang hợp là?",o:["Oxygen","Carbon dioxide","Nito","Hơi nước"],a:0,e:"Oxygen được tạo ra từ sự phân ly nước."},
+  {q:"Cơ quan tiết insulin là?",o:["Tụy","Gan","Thận","Tuyến giáp"],a:0,e:"Tế bào beta của tụy."},
+  {q:"Enzyme tháo xoắn phân tử DNA là?",o:["Helicase","DNA polymerase","Ligase","Primase"],a:0,e:"Helicase phá các liên kết hydrogen."},
+  {q:"Tỷ lệ kiểu hình F2 của phép lai một tính trạng trội hoàn toàn là?",o:["3:1","1:2:1","9:3:3:1","1:1"],a:0,e:"3 trội : 1 lặn."},
+  {q:"Một gene quy định nhiều tính trạng gọi là?",o:["Gene đa hiệu","Tương tác gene","Vượt trội","Đồng trội"],a:0,e:"Hiện tượng gene đa hiệu (pleiotropy)."},
+  {q:"Bệnh mù màu đỏ-lục liên kết với nhiễm sắc thể nào?",o:["Nhiễm sắc thể X","Nhiễm sắc thể Y","Nhiễm sắc thể thường","DNA ty thể"],a:0,e:"Gene nằm trên nhiễm sắc thể X."},
+  {q:"Chu trình Krebs xảy ra ở đâu?",o:["Chất nền ty thể","Màng trong ty thể","Tế bào chất","Lục lạp"],a:0,e:"Trong chất nền (matrix) của ty thể."},
+  {q:"Codon mở đầu là?",o:["AUG","UAA","UAG","UGA"],a:0,e:"AUG mã hóa Methionine và là codon mở đầu."},
+  {q:"Hoán vị gene xảy ra ở kỳ nào của giảm phân?",o:["Kỳ đầu I","Kỳ giữa I","Kỳ sau I","Kỳ cuối I"],a:0,e:"Crossing-over xảy ra ở kỳ đầu I."},
+  {q:"Hệ tuần hoàn hở gặp ở nhóm động vật nào?",o:["Côn trùng","Cá","Chim","Thú"],a:0,e:"Côn trùng và nhiều động vật không xương sống."},
+  {q:"ATP và NADPH trong quang hợp được tạo ở pha nào?",o:["Pha sáng","Pha tối","Cả hai pha","Không có"],a:0,e:"Pha sáng (light-dependent reactions)."},
+  {q:"Hội chứng Down do dạng đột biến nào?",o:["Thể ba nhiễm 21","Thể một nhiễm","Mất đoạn","Đảo đoạn"],a:0,e:"Trisomy 21."}
+];
+let bank=[];for(let i=0;i<200;i++)bank.push({...QS[i%QS.length],id:i+1});
+let state={level:1,correct:0,timer:null,timeLeft:15,answered:false,current:null,wrong:JSON.parse(localStorage.getItem("bq_flash")||"[]")};
+
+/* NAV */
+document.querySelectorAll("#nav button").forEach(btn=>{
+  btn.onclick=()=>{document.querySelectorAll("#nav button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");showScreen(btn.dataset.screen);};
+});
+function showScreen(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));document.getElementById(id).classList.add("active");if(id==="wiki")renderWiki();if(id==="flash")renderFlash();}
+
+/* GAME */
+function getStage(lv){let acc=0;for(let i=0;i<STAGES.length;i++){acc+=STAGES[i].l;if(lv<=acc)return{i,...STAGES[i]};}return{i:4,...STAGES[4]};}
+function updateChar(){
+  const s=getStage(state.level);const c=CHARS[s.i];
+  document.getElementById("charSprite").textContent=c.e;document.getElementById("charName").textContent=c.n;document.getElementById("charDesc").textContent=c.d;
+  let prev=0;for(let i=0;i<s.i;i++)prev+=STAGES[i].l;
+  document.getElementById("charFill").style.width=((state.level-prev)/s.l*100)+"%";
+  document.getElementById("stageBadge").textContent=`Cấp ${s.i+1} • ${s.n}`;
+  document.getElementById("curLevel").textContent=state.level;document.getElementById("progFill").style.width=(state.level/200*100)+"%";
+  document.getElementById("sLevel").textContent=state.level;document.getElementById("sStage").textContent=s.i+1;document.getElementById("sCorrect").textContent=state.correct;
+}
+function startGame(){showScreen("game");document.querySelector('[data-screen="game"]').classList.add("active");loadQ();}
+function loadQ(){
+  clearInterval(state.timer);state.answered=false;document.getElementById("nextBtn").style.display="none";document.getElementById("feedback").style.display="none";
+  const s=getStage(state.level);state.timeLeft=s.t;document.getElementById("timer").textContent=state.timeLeft;document.getElementById("timer").classList.remove("danger");
+  state.current=bank[(state.level-1)%bank.length];document.getElementById("qText").textContent=`Câu ${state.level}: ${state.current.q}`;
+  const opts=document.getElementById("options");opts.innerHTML="";
+  state.current.o.forEach((o,i)=>{const b=document.createElement("button");b.className="option-btn";b.textContent=String.fromCharCode(65+i)+". "+o;b.onclick=()=>choose(i);opts.appendChild(b);});
+  state.timer=setInterval(()=>{state.timeLeft--;document.getElementById("timer").textContent=state.timeLeft;if(state.timeLeft<=5)document.getElementById("timer").classList.add("danger");if(state.timeLeft<=0){clearInterval(state.timer);if(!state.answered)choose(-1);}},1000);
+  updateChar();
+}
+function choose(i){
+  if(state.answered)return;state.answered=true;clearInterval(state.timer);const correct=state.current.a;
+  document.querySelectorAll(".option-btn").forEach((b,idx)=>{b.disabled=true;if(idx===correct)b.classList.add("correct");if(idx===i&&i!==correct)b.classList.add("wrong");});
+  const fb=document.getElementById("feedback");fb.style.display="block";
+  if(i===correct){state.correct++;fb.style.background="rgba(16,185,129,.2)";fb.innerHTML=`<b>Chính xác!</b> ${state.current.e}`;}
+  else{fb.style.background="rgba(239,68,68,.2)";fb.innerHTML=`<b>${i===-1?"Hết giờ!":"Sai!"}</b> Đáp án: ${String.fromCharCode(65+correct)}. ${state.current.o[correct]}. ${state.current.e}`;
+    if(!state.wrong.some(w=>w.q===state.current.q)){state.wrong.unshift({q:state.current.q,a:state.current.o[correct],e:state.current.e});localStorage.setItem("bq_flash",JSON.stringify(state.wrong.slice(0,40)));}}
+  document.getElementById("nextBtn").style.display="inline-block";updateChar();
+}
+function nextQ(){if(state.level>=200){state.level=1;state.correct=0;alert("Hoàn thành 200 Level! Bắt đầu lại.");}else state.level++;loadQ();}
+
+/* EXAM */
+let examTimer=null,examLeft=50*60;
+function startExam(){
+  document.getElementById("startExamBtn").style.display="none";document.getElementById("examArea").style.display="block";document.getElementById("examResult").innerHTML="";examLeft=50*60;
+  const shuffled=[...QS].sort(()=>Math.random()-0.5);
+  let html=`<h4 style="color:#34d399;margin:10px 0 7px">I. Trắc nghiệm nhiều lựa chọn (18 câu)</h4>`;
+  shuffled.slice(0,18).forEach((q,i)=>{html+=`<div class="exam-q"><div class="num">Câu ${i+1}</div>${q.q}`;q.o.forEach((o,j)=>html+=`<label style="display:block;margin:3px 0"><input type="radio" name="mc${i}" value="${j}"> ${String.fromCharCode(65+j)}. ${o}</label>`);html+=`</div>`;});
+  html+=`<h4 style="color:#34d399;margin:14px 0 7px">II. Trắc nghiệm đúng/sai (4 câu)</h4>`;
+  const tfs=[{s:"Về DNA:",items:["DNA mang thông tin di truyền","DNA chỉ có ở nhân","Liên kết A-T có 3 liên kết hydrogen","Nguyên tắc bổ sung là A-T và G-C"]},{s:"Về nguyên phân:",items:["Giữ nguyên số lượng nhiễm sắc thể 2n","Chỉ xảy ra ở tế bào sinh dục","Có một lần phân bào","Tạo hai tế bào con giống nhau"]},{s:"Về Mendel:",items:["F2 tỷ lệ 3:1 khi lai một tính trạng","Alen trội át hoàn toàn alen lặn","Mọi gene đều phân ly độc lập","Thí nghiệm trên đậu Hà Lan"]},{s:"Về hô hấp tế bào:",items:["Đường phân xảy ra ở tế bào chất","Chu trình Krebs tạo nhiều ATP nhất","Chuỗi truyền electron cần oxygen","Tổng ATP khoảng 30-32"]}];
+  tfs.forEach((t,i)=>{html+=`<div class="exam-q"><div class="num">Câu ${19+i}</div>${t.s}`;t.items.forEach((it,j)=>html+=`<label style="display:block;margin:3px 0"><input type="checkbox" name="tf${i}_${j}"> ${String.fromCharCode(97+j)}) ${it}</label>`);html+=`</div>`;});
+  html+=`<h4 style="color:#34d399;margin:14px 0 7px">III. Trả lời ngắn (6 câu)</h4>`;
+  const shorts=["Số amino acid tối đa từ mRNA dài 300 nucleotide (không tính intron)?","Tỷ lệ % hoa trắng khi cây Aa tự thụ phấn?","Số nhiễm sắc thể lưỡng bội ở người (2n)?","Tần số hoán vị nếu một kiểu hình hoán vị chiếm 8,5%?","Bậc dinh dưỡng của cá nhỏ trong chuỗi: Tảo → Giáp xác → Cá nhỏ → Cá lớn?","Số ATP lý thuyết thu được từ 1 phân tử glucose qua hô hấp hiếu khí?"];
+  shorts.forEach((s,i)=>{html+=`<div class="exam-q"><div class="num">Câu ${23+i}</div>${s}<br><input type="text" id="sh${i}" style="margin-top:5px;padding:5px 8px;width:110px;background:#000;border:1px solid #555;color:#fff;border-radius:5px"></div>`;});
+  document.getElementById("examQs").innerHTML=html;
+  clearInterval(examTimer);examTimer=setInterval(()=>{examLeft--;const m=Math.floor(examLeft/60),s=examLeft%60;document.getElementById("examTimer").textContent=`${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;if(examLeft<=0){clearInterval(examTimer);submitExam(true);}},1000);
+}
+function submitExam(auto=false){
+  clearInterval(examTimer);let score=0;
+  for(let i=0;i<18;i++){const r=document.querySelector(`input[name="mc${i}"]:checked`);if(r&&+r.value===QS[i%QS.length].a)score++;}
+  if(document.getElementById("sh0")?.value==="100")score++;if(document.getElementById("sh1")?.value==="25")score++;if(document.getElementById("sh2")?.value==="46")score++;score+=2;
+  document.getElementById("examResult").innerHTML=`<div class="glass" style="padding:14px"><h3 style="color:#34d399">${auto?"Hết giờ!":"Đã nộp bài"}</h3><p>Điểm ước tính: <b>${score}/28</b></p><button class="btn btn-primary" style="margin-top:10px" onclick="startExam()">Tạo đề mới</button></div>`;
+  document.getElementById("examArea").style.display="none";document.getElementById("startExamBtn").style.display="inline-block";
+}
+
+/* LAB */
+document.querySelectorAll(".lab-tabs button").forEach(btn=>{btn.onclick=()=>{document.querySelectorAll(".lab-tabs button").forEach(b=>b.classList.remove("active"));btn.classList.add("active");document.querySelectorAll(".lab-panel").forEach(p=>p.classList.remove("active"));document.getElementById("lab-"+btn.dataset.lab).classList.add("active");};});
+function runMendel(){const p1=document.getElementById("p1").value,p2=document.getElementById("p2").value;const g1=p1==="AA"?["A","A"]:p1==="aa"?["a","a"]:["A","a"];const g2=p2==="AA"?["A","A"]:p2==="aa"?["a","a"]:["A","a"];document.getElementById("resMendel").innerHTML=`<div class="punnett"><div></div><div class="h">${g2[0]}</div><div class="h">${g2[1]}</div><div class="h">${g1[0]}</div><div>${[g1[0],g2[0]].sort().join("")}</div><div>${[g1[0],g2[1]].sort().join("")}</div><div class="h">${g1[1]}</div><div>${[g1[1],g2[0]].sort().join("")}</div><div>${[g1[1],g2[1]].sort().join("")}</div></div>`;}
+function runMorgan(){const p=+document.getElementById("hv").value||0;document.getElementById("resMorgan").innerHTML=`Tần số hoán vị = <b>${p}%</b> → khoảng cách gene ≈ <b>${p} cM</b><br>Kiểu hình bố mẹ: ${((100-p)/2).toFixed(1)}% mỗi loại<br>Kiểu hình hoán vị: ${(p/2).toFixed(1)}% mỗi loại`;}
+
+/* WIKI + FLASH */
+function renderWiki(){document.getElementById("wikiGrid").innerHTML=[{t:"DNA",c:"Phân tử mang thông tin di truyền, cấu trúc xoắn kép."},{t:"Mendel",c:"Ba quy luật: đồng tính, phân tính, phân ly độc lập."},{t:"Hô hấp tế bào",c:"Đường phân → Chu trình Krebs → Chuỗi truyền electron."}].map(e=>`<div class="glass" style="padding:13px"><h3 style="color:#34d399">${e.t}</h3><p style="font-size:.88rem">${e.c}</p></div>`).join("");}
+function renderFlash(){const g=document.getElementById("flashGrid");if(!state.wrong.length){g.innerHTML="<p style='color:#94a3b8'>Chưa có thẻ nào.</p>";return;}g.innerHTML=state.wrong.map(c=>`<div class="glass" style="padding:13px;cursor:pointer" onclick="this.querySelector('.back').style.display=this.querySelector('.back').style.display==='none'?'block':'none'"><b>${c.q}</b><div class="back" style="display:none;margin-top:7px;color:#a7f3d0">${c.a}<br><i>${c.e}</i></div></div>`).join("");}
+
+/* ===== CHATBOT DÙNG GROK API ===== */
+async function sendChat() {
+  const inp = document.getElementById("chatInput");
+  const t = inp.value.trim();
+  if (!t) return;
+
+  const body = document.getElementById("chatBody");
+  body.innerHTML += `<div class="chat-msg user">${t}</div>`;
+  inp.value = "";
+  body.scrollTop = 9999;
+
+  const loadingId = "loading-" + Date.now();
+  body.innerHTML += `<div class="chat-msg bot" id="${loadingId}">Đang suy nghĩ...</div>`;
+  body.scrollTop = 9999;
+
+  try {
+    const response = await fetch("https://api.x.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer grok_be79920fdb7ed40317ca831dfb548eb5_ab9c5307aa88ab9323c3a0070c6662b99a1b8ab44ad57225c963d376c9f38f5f"   // ← THAY KEY CỦA BẠN VÀO ĐÂY
+      },
+      body: JSON.stringify({
+        model: "grok-3",
+        messages: [
+          {
+            role: "system",
+            content: "Bạn là Dr. Sparrow, trợ lý Sinh học THPT của ứng dụng BioQuest. Hãy trả lời bằng tiếng Việt, ngắn gọn, đúng trọng tâm, dễ hiểu với học sinh cấp 3. Tập trung kiến thức chương trình GDPT 2018."
+          },
+          { role: "user", content: t }
+        ],
+        temperature: 0.7,
+        max_tokens: 700
+      })
+    });
+
+    const data = await response.json();
+    const loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+
+    if (data.choices && data.choices[0]) {
+      body.innerHTML += `<div class="chat-msg bot">${data.choices[0].message.content}</div>`;
+    } else {
+      body.innerHTML += `<div class="chat-msg bot">Xin lỗi, mình không nhận được câu trả lời.</div>`;
+    }
+  } catch (err) {
+    const loadingEl = document.getElementById(loadingId);
+    if (loadingEl) loadingEl.remove();
+    body.innerHTML += `<div class="chat-msg bot">Lỗi kết nối. Kiểm tra API Key hoặc internet nhé.</div>`;
+  }
+  body.scrollTop = 9999;
+}
+</script>
+</body>
+</html>
